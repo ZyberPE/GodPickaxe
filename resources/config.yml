@@ -1,0 +1,13 @@
+cooldown-seconds: 60
+
+messages:
+  success: "§aYou have received the §bGod Pickaxe§a!"
+  no-permission: "§cYou do not have permission to use this command!"
+  cooldown: "§cYou must wait {time}s before using this again!"
+
+pickaxe:
+  custom-name: "§b§lGod Pickaxe"
+  lore:
+    - "§7A pickaxe forged by the gods."
+    - "§7Breaks everything in a 3x3x3 area."
+    - "§eHaste V while holding."
