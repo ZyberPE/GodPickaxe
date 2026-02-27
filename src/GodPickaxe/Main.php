@@ -20,13 +20,12 @@ use pocketmine\event\block\BlockBreakEvent;
 use pocketmine\entity\effect\VanillaEffects;
 use pocketmine\entity\effect\EffectInstance;
 
-use pocketmine\block\VanillaBlocks;
-use pocketmine\math\Vector3;
 use pocketmine\math\Facing;
 
 class Main extends PluginBase implements Listener {
 
     private array $cooldowns = [];
+    private bool $isBreaking = false;
 
     public function onEnable(): void {
         $this->saveDefaultConfig();
@@ -103,13 +102,17 @@ class Main extends PluginBase implements Listener {
     }
 
     /* -------------------------
-       OP PRISON 3x3x3 FORWARD
+       OP PRISON 3x3 FORWARD
     --------------------------*/
 
     public function onBreak(BlockBreakEvent $event): void {
 
         if($event->isCancelled()){
             return;
+        }
+
+        if($this->isBreaking){
+            return; // prevent recursion
         }
 
         $player = $event->getPlayer();
@@ -119,14 +122,13 @@ class Main extends PluginBase implements Listener {
             return;
         }
 
-        $event->cancel(); // prevent recursion
-
         $block = $event->getBlock();
         $world = $block->getPosition()->getWorld();
         $center = $block->getPosition();
 
-        $face = $player->getHorizontalFacing();
+        $this->isBreaking = true;
 
+        $face = $player->getHorizontalFacing();
         $broken = 0;
 
         for($y = -1; $y <= 1; $y++){
@@ -157,20 +159,9 @@ class Main extends PluginBase implements Listener {
                         break;
                 }
 
-                $pos = new Vector3(
-                    $center->getX() + $x,
-                    $center->getY() + $y,
-                    $center->getZ() + $z
-                );
-
+                $pos = $center->add($x, $y, $z);
                 $target = $world->getBlock($pos);
 
-                // Ignore air
-                if($target->getTypeId() === VanillaBlocks::AIR()->getTypeId()){
-                    continue;
-                }
-
-                // Ignore bedrock & unbreakables
                 if(!$target->getBreakInfo()->isBreakable()){
                     continue;
                 }
@@ -186,10 +177,12 @@ class Main extends PluginBase implements Listener {
             $broken++;
         }
 
-        // Only 1 durability loss
+        // Single durability loss
         if($broken > 0){
             $item->applyDamage(1);
             $player->getInventory()->setItemInHand($item);
         }
+
+        $this->isBreaking = false;
     }
 }
