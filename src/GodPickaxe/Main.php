@@ -5,56 +5,63 @@ declare(strict_types=1);
 namespace GodPickaxe;
 
 use pocketmine\plugin\PluginBase;
+use pocketmine\event\Listener;
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
 use pocketmine\player\Player;
+
 use pocketmine\item\VanillaItems;
 use pocketmine\item\enchantment\VanillaEnchantments;
 use pocketmine\item\enchantment\EnchantmentInstance;
-use pocketmine\event\Listener;
+
 use pocketmine\event\player\PlayerItemHeldEvent;
 use pocketmine\event\block\BlockBreakEvent;
-use pocketmine\world\Position;
-use pocketmine\utils\Config;
+
 use pocketmine\entity\effect\VanillaEffects;
 use pocketmine\entity\effect\EffectInstance;
 
+use pocketmine\block\VanillaBlocks;
+use pocketmine\math\Vector3;
+use pocketmine\math\Facing;
+
 class Main extends PluginBase implements Listener {
 
-    private Config $config;
     private array $cooldowns = [];
 
     public function onEnable(): void {
         $this->saveDefaultConfig();
-        $this->config = $this->getConfig();
         $this->getServer()->getPluginManager()->registerEvents($this, $this);
     }
 
+    /* -------------------------
+       COMMAND
+    --------------------------*/
+
     public function onCommand(CommandSender $sender, Command $command, string $label, array $args): bool {
 
-        if(!$sender instanceof Player) {
+        if(!$sender instanceof Player){
             return true;
         }
 
-        if(!$sender->hasPermission("god.pickaxe")) {
-            $sender->sendMessage($this->config->get("messages")["no-permission"]);
+        if(!$sender->hasPermission("god.pickaxe")){
+            $sender->sendMessage($this->getConfig()->get("messages")["no-permission"]);
             return true;
         }
 
-        $cooldownTime = $this->config->get("cooldown-seconds");
-        $playerName = $sender->getName();
-        $currentTime = time();
+        $cooldownSeconds = $this->getConfig()->get("cooldown-seconds");
+        $name = $sender->getName();
+        $time = time();
 
-        if(isset($this->cooldowns[$playerName])) {
-            $remaining = $this->cooldowns[$playerName] - $currentTime;
-            if($remaining > 0) {
-                $msg = str_replace("{time}", (string)$remaining, $this->config->get("messages")["cooldown"]);
+        if(isset($this->cooldowns[$name])){
+            $remaining = $this->cooldowns[$name] - $time;
+            if($remaining > 0){
+                $msg = str_replace("{time}", (string)$remaining, $this->getConfig()->get("messages")["cooldown"]);
                 $sender->sendMessage($msg);
                 return true;
             }
         }
 
-        $this->cooldowns[$playerName] = $currentTime + $cooldownTime;
+        $this->cooldowns[$name] = $time + $cooldownSeconds;
 
         $pickaxe = VanillaItems::DIAMOND_PICKAXE();
 
@@ -62,23 +69,32 @@ class Main extends PluginBase implements Listener {
         $pickaxe->addEnchantment(new EnchantmentInstance(VanillaEnchantments::UNBREAKING(), 3));
         $pickaxe->addEnchantment(new EnchantmentInstance(VanillaEnchantments::FORTUNE(), 3));
 
-        $pickaxe->setCustomName($this->config->get("pickaxe")["custom-name"]);
-        $pickaxe->setLore($this->config->get("pickaxe")["lore"]);
+        $pickaxe->setCustomName($this->getConfig()->get("pickaxe")["custom-name"]);
+        $pickaxe->setLore($this->getConfig()->get("pickaxe")["lore"]);
 
         $sender->getInventory()->addItem($pickaxe);
 
-        $sender->sendMessage($this->config->get("messages")["success"]);
-
+        $sender->sendMessage($this->getConfig()->get("messages")["success"]);
         return true;
     }
+
+    /* -------------------------
+       HASTE EFFECT
+    --------------------------*/
 
     public function onHold(PlayerItemHeldEvent $event): void {
         $player = $event->getPlayer();
         $item = $event->getItem();
 
-        if($item->getCustomName() === $this->config->get("pickaxe")["custom-name"]) {
+        if($item->getCustomName() === $this->getConfig()->get("pickaxe")["custom-name"]){
 
-            $effect = new EffectInstance(VanillaEffects::HASTE(), 999999, 4, false);
+            $effect = new EffectInstance(
+                VanillaEffects::HASTE(),
+                999999,
+                4,
+                false
+            );
+
             $player->getEffects()->add($effect);
 
         } else {
@@ -86,37 +102,94 @@ class Main extends PluginBase implements Listener {
         }
     }
 
+    /* -------------------------
+       OP PRISON 3x3x3 FORWARD
+    --------------------------*/
+
     public function onBreak(BlockBreakEvent $event): void {
+
+        if($event->isCancelled()){
+            return;
+        }
 
         $player = $event->getPlayer();
         $item = $player->getInventory()->getItemInHand();
 
-        if($item->getCustomName() !== $this->config->get("pickaxe")["custom-name"]) {
+        if($item->getCustomName() !== $this->getConfig()->get("pickaxe")["custom-name"]){
             return;
         }
+
+        $event->cancel(); // prevent recursion
 
         $block = $event->getBlock();
         $world = $block->getPosition()->getWorld();
         $center = $block->getPosition();
 
-        for($x = -1; $x <= 1; $x++) {
-            for($y = -1; $y <= 1; $y++) {
-                for($z = -1; $z <= 1; $z++) {
+        $face = $player->getHorizontalFacing();
 
-                    $pos = new Position(
-                        $center->getX() + $x,
-                        $center->getY() + $y,
-                        $center->getZ() + $z,
-                        $world
-                    );
+        $broken = 0;
 
-                    $target = $world->getBlock($pos);
+        for($y = -1; $y <= 1; $y++){
+            for($side = -1; $side <= 1; $side++){
 
-                    if(!$target->isAir()) {
-                        $world->useBreakOn($pos, $item, $player);
-                    }
+                $x = 0;
+                $z = 0;
+
+                switch($face){
+                    case Facing::NORTH:
+                        $x = $side;
+                        $z = -1;
+                        break;
+
+                    case Facing::SOUTH:
+                        $x = -$side;
+                        $z = 1;
+                        break;
+
+                    case Facing::WEST:
+                        $x = -1;
+                        $z = -$side;
+                        break;
+
+                    case Facing::EAST:
+                        $x = 1;
+                        $z = $side;
+                        break;
                 }
+
+                $pos = new Vector3(
+                    $center->getX() + $x,
+                    $center->getY() + $y,
+                    $center->getZ() + $z
+                );
+
+                $target = $world->getBlock($pos);
+
+                // Ignore air
+                if($target->getTypeId() === VanillaBlocks::AIR()->getTypeId()){
+                    continue;
+                }
+
+                // Ignore bedrock & unbreakables
+                if(!$target->getBreakInfo()->isBreakable()){
+                    continue;
+                }
+
+                $world->useBreakOn($pos, $item, $player);
+                $broken++;
             }
+        }
+
+        // Break center block last
+        if($block->getBreakInfo()->isBreakable()){
+            $world->useBreakOn($center, $item, $player);
+            $broken++;
+        }
+
+        // Only 1 durability loss
+        if($broken > 0){
+            $item->applyDamage(1);
+            $player->getInventory()->setItemInHand($item);
         }
     }
 }
