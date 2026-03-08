@@ -1,9 +1,14 @@
 cooldown-seconds: 60
 
 messages:
-  success: "§aYou have received the §bGod Pickaxe§a!"
-  no-permission: "§cYou do not have permission to use this command!"
+  success-self: "§aYou have received the §bGod Pickaxe§a!"
+  success-give: "§aYou have given a §bGod Pickaxe §ato §e{player}§a!"
+  received: "§aYou have been given a §bGod Pickaxe§a!"
+  no-permission: "§cYou do not have permission!"
+  no-permission-give: "§cYou do not have permission to give this!"
+  player-not-found: "§cPlayer not found!"
   cooldown: "§cYou must wait {time}s before using this again!"
+  usage: "§eUsage: /gpick [give <player>]"
 
 pickaxe:
   custom-name: "§b§lGod Pickaxe"
