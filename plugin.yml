@@ -8,10 +8,14 @@ commands:
   gpick:
     description: God Pickaxe command
     usage: /gpick
+    permission: god.pickaxe
     aliases: [godpickaxe]
 
 permissions:
   god.pickaxe:
+    description: Use /gpick
     default: op
+
   god.pickaxe.give:
+    description: Give god pickaxe to players
     default: op
