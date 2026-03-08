@@ -1,17 +1,17 @@
 name: GodPickaxe
 main: GodPickaxe\Main
-version: 1.0.0
+version: 1.1.0
 api: 5.0.0
 author: ZyberPE
 
 commands:
-  godpickaxe:
-    description: Receive the God Pickaxe
-    usage: /godpickaxe
-    permission: god.pickaxe
-    aliases: [gpick]
+  gpick:
+    description: God Pickaxe command
+    usage: /gpick
+    aliases: [godpickaxe]
 
 permissions:
   god.pickaxe:
-    description: Allows player to use /godpickaxe
+    default: op
+  god.pickaxe.give:
     default: op
